@@ -28,7 +28,7 @@ class ScoringService(object):
     def get_model(cls):
         """Get the model object for this instance, loading it if it's not already loaded."""
         if cls.model == None:
-            with open(os.path.join(model_path, 'decision-tree-model.pkl'), 'rb') as inp:
+            with open(os.path.join(model_path, 'model.pkl'), 'rb') as inp:
                 cls.model = pickle.load(inp)
         return cls.model
 
@@ -41,6 +41,28 @@ class ScoringService(object):
                 one prediction per row in the dataframe"""
         clf = cls.get_model()
         return clf.predict(input)
+
+    @classmethod
+    def predict_proba(cls, input):
+        """For the input, do the predictions and return predicted probabilities for classes.
+
+        Args:
+            input (a pandas dataframe): The data on which to do the predictions. There will be
+                one prediction per row in the dataframe"""
+        clf = cls.get_model()
+        try:
+            return clf.predict_proba(input)
+        except AttributeError:
+            return "this model has no predict probability function"
+
+    @classmethod
+    def get_classes(clf):
+        clf = cls.get_model()
+        try:
+            return clf.classes_
+        except AttributeError:
+            return "this model does not have classes"
+
 
 # The flask app for serving predictions
 app = flask.Flask(__name__)
@@ -74,10 +96,19 @@ def transformation():
 
     # Do the prediction
     predictions = ScoringService.predict(data)
+    to_return = {'prediction': predictions}
+
+    # if this is classification
+    predict_proba = ScoringService.predict_proba(data)
+    if type(predict_proba) != type(str):
+        classes = ScoringService.get_classes()
+        probability_dict = {classes[i]: predict_proba[i] for i in range(0, len(classes))}
+
+        to_return = {**to_return, **probability_dict}
 
     # Convert from numpy back to CSV
     out = StringIO.StringIO()
-    pd.DataFrame({'results':predictions}).to_csv(out, header=False, index=False)
+    pd.DataFrame(to_return).to_csv(out, header=False, index=False)
     result = out.getvalue()
 
     return flask.Response(response=result, status=200, mimetype='text/csv')
