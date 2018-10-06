@@ -12,6 +12,7 @@ import signal
 import traceback
 
 import flask
+from flask import json
 
 import pandas as pd
 
@@ -106,9 +107,9 @@ def transformation():
 
         to_return = {**to_return, **probability_dict}
 
-    # Convert from numpy back to CSV
-    out = StringIO.StringIO()
-    pd.DataFrame(to_return).to_csv(out, header=False, index=False)
-    result = out.getvalue()
+    # # Convert from numpy back to CSV
+    # out = StringIO.StringIO()
+    # pd.DataFrame(to_return).to_csv(out, header=False, index=False)
+    # result = out.getvalue()
 
-    return flask.Response(response=result, status=200, mimetype='text/csv')
+    return flask.Response(response=json.dumps(to_return), status=200, mimetype='application/json')
